@@ -100,49 +100,64 @@ You can run the entire pipeline, including an isolated instance of Ollama, using
 * **CPU Image (Default)**: `~400 MB` — Builds lightweight standard dependencies.
 * **GPU Image (CUDA Enabled)**: `~2.2 GB` — Built with `INSTALL_CUDA=true`. Static CUDA archives (`*.a` files) are stripped automatically during build to reduce image size by over 55%.
 
-### ⚙️ Configuration (CPU vs GPU)
+### ⚙️ Configuration & Build (CPU vs GPU)
 
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
+1. **Copy configuration file**:
+   ```bash
+   cp .env.example .env
+   ```
 
-* **CPU Mode (Default)**: Keep `.env` set to `COMPOSE_FILE=docker-compose.yaml`.
-* **GPU Mode**: Edit `.env` to enable the GPU overlay:
-  ```env
-  COMPOSE_FILE=docker-compose.yaml:docker-compose.gpu.yaml
-  ```
+2. **Select Mode in `.env`**:
+   * **CPU Mode (Default)**: Keep `.env` configured for CPU:
+     ```env
+     COMPOSE_FILE=docker-compose.yaml
+     ```
+   * **GPU Mode (CUDA Acceleration)**: Edit `.env` to load the GPU overlay:
+     ```env
+     COMPOSE_FILE=docker-compose.yaml:docker-compose.gpu.yaml
+     ```
 
-### 🚀 How to Run (Single-Job with Auto-Teardown)
+3. **Build the Container Image**:
+   * **For CPU**: `docker compose build app`
+   * **For GPU**: `docker compose build app` *(Builds with `INSTALL_CUDA=true` when `.env` has the GPU overlay)*
 
-To run the pipeline and automatically spin down Ollama (cleaning up RAM/VRAM) when the meeting completes:
+---
+
+### 🚀 How to Run
+
+#### Single-Job Execution (With Auto-Teardown)
+To process a file and automatically stop all containers (releasing system resources) when finished:
 
 ```bash
 docker compose up --exit-code-from app --abort-on-container-exit
 ```
 
-#### 🔄 Manual Service Management (Alternative)
-If you prefer running services persistently:
+#### Interactive / Custom Command Execution
+Start background services first, then run custom parameters:
 
-1. **Start Ollama**:
+1. **Start background services (Ollama)**:
    ```bash
    docker compose up -d
    ```
-2. **Execute Pipeline**:
-   * **On CPU**:
+
+2. **Run Pipeline Command**:
+   * **CPU Example**:
      ```bash
-     docker compose run --rm app --target sample.mp3 --whisper-model tiny --whisper-device cpu --language pt
+     docker compose run --rm app --target sample.mp3 --whisper-model small --whisper-device cpu --language pt
      ```
-   * **On GPU**:
+   * **GPU Example (CUDA)**:
      ```bash
-     docker compose run --rm app --target sample.mp3 --whisper-model tiny --whisper-device cuda --language pt
+     docker compose run --rm app --target "https://youtu.be/aqmt_3UWItA" --whisper-model medium --whisper-device cuda --whisper-compute-type float16 --llm-model llama3.1:8b --verbose
      ```
-3. **Stop Ollama when finished**:
+
+3. **Stop background services**:
    ```bash
    docker compose down
    ```
 
-> 💡 **Memory Optimization**: Upon completing summarization, the pipeline automatically sends a `keep_alive: 0` signal to Ollama, evicting the loaded LLM from memory (VRAM/RAM) immediately.
+> 💡 **Automatic Model Pulling & Memory Eviction**:
+> * If a requested LLM model (e.g. `llama3.1:8b`) is not downloaded locally in Ollama, the pipeline will automatically pull it on demand.
+> * Upon completing summarization, the pipeline automatically sends `keep_alive: 0` to Ollama, evicting the model from VRAM/RAM immediately.
 
 ---
 

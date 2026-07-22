@@ -234,6 +234,13 @@ def _call_ollama_generate(
     with httpx.Client(base_url=base_url, timeout=timeout_seconds) as client:
         response = client.post("/api/generate", json=payload)
 
+        if response.status_code != 200 and ("not found" in response.text.lower() or response.status_code == 404):
+            logger.info("Model '%s' not found locally in Ollama. Attempting automatic model pull...", model_name)
+            pull_resp = client.post("/api/pull", json={"name": model_name, "stream": False}, timeout=600.0)
+            if pull_resp.status_code == 200:
+                logger.info("Model '%s' successfully pulled. Resuming generation...", model_name)
+                response = client.post("/api/generate", json=payload)
+
     if response.status_code != 200:
         logger.error("Ollama request failed: %s %s", response.status_code, response.text)
         raise RuntimeError("ollama request failed")
