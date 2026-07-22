@@ -18,7 +18,7 @@ graph TD
 
 1. **Audio/Video Extraction & Normalization**: The input file (e.g., `.mp3`, `.mp4`, `.wav`, `.mkv`) or YouTube URL is processed via `ffmpeg` or `yt-dlp` to extract the audio channel and normalize it into a standard format: PCM 16-bit, 16000Hz, mono WAV.
 2. **Transcription**: The normalized audio is transcribed using the **`faster-whisper`** library, generating a `.srt` subtitle file.
-3. **Summarization (Local LLM)**: The transcript is fed to a local instance of **Ollama** (defaulting to the `gemma:2b` model) to construct structural meeting bullet points (Key Points, Decisions, Actions, and Pendencies) in Portuguese. Transcripts exceeding context windows are automatically chunked and consolidated.
+3. **Summarization (Local LLM)**: The transcript is fed to a local instance of **Ollama** (defaulting to `LiquidAI/lfm2.5-1.2b-instruct`) to construct structural meeting bullet points (Key Points, Decisions, Actions, and Pendencies) in Portuguese. Transcripts exceeding context windows are automatically chunked and consolidated.
 
 ---
 
@@ -34,7 +34,7 @@ Before running the pipeline, ensure you have the following installed on your sys
 4. **yt-dlp** — Required for downloading audio from YouTube URLs.
 5. **[Ollama](https://ollama.com/)** — Running locally with your model of choice pulled:
    ```bash
-   ollama pull gemma:2b
+   ollama pull LiquidAI/lfm2.5-1.2b-instruct
    ```
 
 ---
@@ -51,42 +51,58 @@ This will automatically create a virtual environment, install all dependencies (
 
 ---
 
-## 💻 CLI Usage
+## 💻 CLI Usage & Configuration Presets
 
 Run the pipeline using `uv run`:
 
 ```bash
-uv run meeting-pipeline --target <path_to_audio_or_video_file_or_youtube_url> [OPTIONS]
+uv run meeting-pipeline --target <path_or_youtube_url> [OPTIONS]
 ```
+
+### ⚡ Configuration Presets & Shortcut Flags
+
+To avoid long command lines, use presets or shortcut flags:
+
+| Shortcut Flag | Preset (`-p` / `--preset`) | Whisper Model | Device | Compute Type | Default LLM Model |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| *(Default)* | `cpu` | `small` | `cpu` | `int8` | `LiquidAI/lfm2.5-1.2b-instruct` |
+| `--fast` | `fast` | `tiny` | `cpu` | `int8` | `LiquidAI/lfm2.5-1.2b-instruct` |
+| `--gpu` | `gpu` / `cuda` | `medium` | `cuda` | `float16` | `llama3.1:8b` |
+| — | `accurate` | `large-v3` | `cuda` | `float16` | `llama3.1:8b` |
+
+> 💡 **Custom Overrides**: Any explicitly passed flag overrides the preset value (e.g. `--gpu --whisper-model large-v3`).
 
 ### Options
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--target` | `str` | *Required* | Path to local media file or YouTube URL |
+| `--preset`, `-p` | `str` | `cpu` | Profile preset: `cpu`, `gpu`, `fast`, `accurate` |
+| `--gpu` | `flag` | `False` | Shortcut for `--preset gpu` |
+| `--fast` | `flag` | `False` | Shortcut for `--preset fast` |
 | `--output-dir` | `Path` | `output` | Directory where output files will be saved |
-| `--whisper-model` | `str` | `small` | Whisper model size (`tiny`, `base`, `small`, `medium`, `large-v3`, etc.) |
-| `--whisper-device` | `str` | `cpu` | Device to run Whisper inference on (`cpu` or `cuda`) |
-| `--whisper-compute-type`| `str` | `int8` | Model quantization/compute type (`int8`, `float16`, etc.) |
-| `--llm-model` | `str` | `gemma:2b` | Ollama model name to use for summarization |
+| `--whisper-model` | `str` | *(from preset)* | Whisper model size (`tiny`, `small`, `medium`, `large-v3`) |
+| `--whisper-device` | `str` | *(from preset)* | Device to run Whisper (`cpu` or `cuda`) |
+| `--whisper-compute-type`| `str` | *(from preset)* | Quantization/compute type (`int8`, `float16`) |
+| `--llm-model` | `str` | *(from preset)* | Ollama model name for summarization |
 | `--language` | `str` | `pt` | Language code for transcription (e.g., `pt`, `en`) |
 | `--verbose` | `flag` | `False` | Enable debug logs |
 
 ### Examples
 
-**Standard Audio Run:**
+**Clean GPU Run (Shorthand):**
 ```bash
-uv run meeting-pipeline --target sample.mp3 --whisper-model small --language pt
+uv run meeting-pipeline --target "https://youtu.be/aqmt_3UWItA" --gpu --verbose
 ```
 
-**YouTube URL Run:**
+**Fast CPU Run (Shorthand):**
 ```bash
-uv run meeting-pipeline --target "https://www.youtube.com/watch?v=dQw4w9WgXcQ" --whisper-model small --language pt
+uv run meeting-pipeline --target sample.mp3 --fast
 ```
 
-**Fast / Low-Resource Run:**
+**GPU Run with Custom Model:**
 ```bash
-uv run meeting-pipeline --target sample.mp3 --whisper-model tiny --language pt --verbose
+uv run meeting-pipeline --target sample.mp3 --gpu --llm-model mistral
 ```
 
 ---

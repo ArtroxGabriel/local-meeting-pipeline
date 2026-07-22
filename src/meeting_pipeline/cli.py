@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+import time
 
 import typer
-
-import time
 
 from .audio import download_youtube_audio
 from .pipeline import run_pipeline
@@ -13,6 +12,38 @@ from .pipeline import run_pipeline
 app = typer.Typer(add_completion=False)
 logger = logging.getLogger(__name__)
 
+PRESETS: dict[str, dict[str, str]] = {
+    "cpu": {
+        "whisper_model": "small",
+        "whisper_device": "cpu",
+        "whisper_compute_type": "int8",
+        "llm_model": "LiquidAI/lfm2.5-1.2b-instruct",
+    },
+    "fast": {
+        "whisper_model": "tiny",
+        "whisper_device": "cpu",
+        "whisper_compute_type": "int8",
+        "llm_model": "LiquidAI/lfm2.5-1.2b-instruct",
+    },
+    "gpu": {
+        "whisper_model": "medium",
+        "whisper_device": "cuda",
+        "whisper_compute_type": "float16",
+        "llm_model": "llama3.1:8b",
+    },
+    "cuda": {
+        "whisper_model": "medium",
+        "whisper_device": "cuda",
+        "whisper_compute_type": "float16",
+        "llm_model": "llama3.1:8b",
+    },
+    "accurate": {
+        "whisper_model": "large-v3",
+        "whisper_device": "cuda",
+        "whisper_compute_type": "float16",
+        "llm_model": "llama3.1:8b",
+    },
+}
 
 
 def configure_logging(verbose: bool) -> None:
@@ -31,10 +62,18 @@ def main(
         help="Input file path or YouTube URL of the video/audio to process.",
     ),
     output_dir: Path = typer.Option(Path("output"), "--output-dir"),
-    whisper_model: str = typer.Option("small", "--whisper-model"),
-    whisper_device: str = typer.Option("cpu", "--whisper-device"),
-    whisper_compute_type: str = typer.Option("int8", "--whisper-compute-type"),
-    llm_model: str = typer.Option("LiquidAI/lfm2.5-1.2b-instruct", "--llm-model"),
+    preset: str | None = typer.Option(
+        None,
+        "--preset",
+        "-p",
+        help="Configuration profile ('cpu', 'gpu'/'cuda', 'fast', 'accurate').",
+    ),
+    gpu: bool = typer.Option(False, "--gpu", help="Shortcut for GPU configuration (--preset gpu)."),
+    fast: bool = typer.Option(False, "--fast", help="Shortcut for fast CPU configuration (--preset fast)."),
+    whisper_model: str | None = typer.Option(None, "--whisper-model"),
+    whisper_device: str | None = typer.Option(None, "--whisper-device"),
+    whisper_compute_type: str | None = typer.Option(None, "--whisper-compute-type"),
+    llm_model: str | None = typer.Option(None, "--llm-model"),
     language: str = typer.Option("pt", "--language"),
     video: bool = typer.Option(
         False,
@@ -44,6 +83,29 @@ def main(
     verbose: bool = typer.Option(False, "--verbose"),
 ) -> None:
     configure_logging(verbose)
+
+    # Determine preset profile
+    selected_preset = preset.lower() if preset else None
+    if not selected_preset:
+        if gpu:
+            selected_preset = "gpu"
+        elif fast:
+            selected_preset = "fast"
+        else:
+            selected_preset = "cpu"
+
+    if selected_preset not in PRESETS:
+        available = ", ".join(sorted(PRESETS.keys()))
+        typer.echo(f"Error: Unknown preset '{selected_preset}'. Available presets: {available}", err=True)
+        raise typer.Exit(code=1)
+
+    defaults = PRESETS[selected_preset]
+
+    # Explicit flags override preset defaults
+    effective_whisper_model = whisper_model or defaults["whisper_model"]
+    effective_whisper_device = whisper_device or defaults["whisper_device"]
+    effective_whisper_compute_type = whisper_compute_type or defaults["whisper_compute_type"]
+    effective_llm_model = llm_model or defaults["llm_model"]
 
     is_url = (
         target.startswith(("http://", "https://", "www."))
@@ -72,10 +134,10 @@ def main(
         transcript_path, summary_path = run_pipeline(
             input_path=input_path,
             output_dir=output_dir,
-            whisper_model=whisper_model,
-            whisper_device=whisper_device,
-            whisper_compute_type=whisper_compute_type,
-            llm_model=llm_model,
+            whisper_model=effective_whisper_model,
+            whisper_device=effective_whisper_device,
+            whisper_compute_type=effective_whisper_compute_type,
+            llm_model=effective_llm_model,
             language=language,
             is_video=is_video,
         )
@@ -98,4 +160,3 @@ def main(
                 logger.info("Deleted temporary YouTube audio file: %s", temp_file)
             except Exception as e:
                 logger.warning("Failed to delete temporary file %s: %s", temp_file, e)
-

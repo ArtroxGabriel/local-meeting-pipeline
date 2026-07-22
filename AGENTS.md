@@ -77,9 +77,9 @@ Always use the registered `uv` environment runners:
 * **Linting / Formatting**: `uv run ruff check`
 
 ### 🏗️ Architecture & Operation
-* **Pipeline Flow**: Input Audio/Video $\rightarrow$ `ffmpeg` normalization (16kHz, Mono WAV) $\rightarrow$ `faster-whisper` transcription $\rightarrow$ local Ollama (`gemma:2b`) Portuguese meeting points.
-* **Ollama Endpoint**: Defaults to `http://127.0.0.1:11434/api/generate` with model `gemma:2b`. Ensure local Ollama is running.
-* **Default model name warning**: Ensure `model_name` passed to the summarizer does not have trailing whitespaces. Use `"gemma:2b"`.
+* **Pipeline Flow**: Input Audio/Video $\rightarrow$ `ffmpeg` normalization (16kHz, Mono WAV) $\rightarrow$ `faster-whisper` transcription $\rightarrow$ local Ollama (`LiquidAI/lfm2.5-1.2b-instruct`) Portuguese meeting points.
+* **Ollama Endpoint**: Defaults to `http://127.0.0.1:11434/api/generate` with model `LiquidAI/lfm2.5-1.2b-instruct`. Ensure local Ollama is running.
+* **Default model name warning**: Ensure `model_name` passed to the summarizer does not have trailing whitespaces. Use `"LiquidAI/lfm2.5-1.2b-instruct"`.
 
 ### ⚠️ Execution & Sandbox Gotchas
 * **Command Sandboxing**: In agent sandboxes, running standard test commands or subprocesses might fail with connection reset/sandbox errors. If sandboxed commands fail, retry with **BypassSandbox: true**.

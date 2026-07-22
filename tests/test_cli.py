@@ -89,11 +89,50 @@ def test_cli_keyboard_interrupt(tmp_path: Path) -> None:
         assert "Process interrupted by user" in result.output
 
 
-def test_cli_pipeline_failure(tmp_path: Path) -> None:
+def test_cli_gpu_flag(tmp_path: Path) -> None:
     input_file = tmp_path / "sample.mp3"
     input_file.write_text("mock audio content")
 
-    with patch("meeting_pipeline.cli.run_pipeline", side_effect=ValueError("Pipeline error")):
-        result = runner.invoke(app, ["--target", str(input_file)])
-        assert result.exit_code == 1
+    with patch("meeting_pipeline.cli.run_pipeline", return_value=(Path("out/transcript.srt"), Path("out/meeting_points.md"))) as mock_run:
+        result = runner.invoke(app, ["--target", str(input_file), "--gpu"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            input_path=input_file,
+            output_dir=Path("output"),
+            whisper_model="medium",
+            whisper_device="cuda",
+            whisper_compute_type="float16",
+            llm_model="llama3.1:8b",
+            language="pt",
+            is_video=False,
+        )
+
+
+def test_cli_preset_override(tmp_path: Path) -> None:
+    input_file = tmp_path / "sample.mp3"
+    input_file.write_text("mock audio content")
+
+    with patch("meeting_pipeline.cli.run_pipeline", return_value=(Path("out/transcript.srt"), Path("out/meeting_points.md"))) as mock_run:
+        result = runner.invoke(app, ["--target", str(input_file), "--preset", "gpu", "--whisper-model", "large-v3"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once_with(
+            input_path=input_file,
+            output_dir=Path("output"),
+            whisper_model="large-v3",
+            whisper_device="cuda",
+            whisper_compute_type="float16",
+            llm_model="llama3.1:8b",
+            language="pt",
+            is_video=False,
+        )
+
+
+def test_cli_invalid_preset(tmp_path: Path) -> None:
+    input_file = tmp_path / "sample.mp3"
+    input_file.write_text("mock audio content")
+
+    result = runner.invoke(app, ["--target", str(input_file), "--preset", "invalid_name"])
+    assert result.exit_code == 1
+    assert "Unknown preset 'invalid_name'" in result.output
+
 
