@@ -12,7 +12,3 @@ wheels/
 *.mp3
 
 output/
-
-# Agent tools metadata
-.agents/
-.ai-jail

@@ -67,3 +67,21 @@ latest binary's recommended copy:
 Both are idempotent: re-runs replace the block delimited by the ai-memory
 start/end HTML-comment markers, without disturbing the rest of the file.
 <!-- ai-memory:end -->
+
+## 🤖 Repository-Specific Guidelines
+
+### 🛠️ Verification & Developer Commands
+Always use the registered `uv` environment runners:
+* **Run Tests**: `uv run meeting-pipeline-test` (Do NOT guess standard `pytest` unless running locally, use this custom script to ensure the environment is synced).
+* **Type Checking**: `uv run pyrefly check` (We use **Pyrefly** as the static type checker and LSP).
+* **Linting / Formatting**: `uv run ruff check`
+
+### 🏗️ Architecture & Operation
+* **Pipeline Flow**: Input Audio/Video $\rightarrow$ `ffmpeg` normalization (16kHz, Mono WAV) $\rightarrow$ `faster-whisper` transcription $\rightarrow$ local Ollama (`gemma:2b`) Portuguese meeting points.
+* **Ollama Endpoint**: Defaults to `http://127.0.0.1:11434/api/generate` with model `gemma:2b`. Ensure local Ollama is running.
+* **Default model name warning**: Ensure `model_name` passed to the summarizer does not have trailing whitespaces. Use `"gemma:2b"`.
+
+### ⚠️ Execution & Sandbox Gotchas
+* **Command Sandboxing**: In agent sandboxes, running standard test commands or subprocesses might fail with connection reset/sandbox errors. If sandboxed commands fail, retry with **BypassSandbox: true**.
+* **Ffmpeg requirement**: Verify ffmpeg is available in the environment path before running extraction.
+
