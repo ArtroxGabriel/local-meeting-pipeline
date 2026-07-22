@@ -57,11 +57,16 @@ def test_summarize_success() -> None:
     with patch("httpx.Client", return_value=mock_client):
         result = summarize_transcript("Some transcript content")
         assert result == "## Pontos principais\n- Reunião produtiva"
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        payload = call_args[1]["json"]
+        assert mock_client.post.call_count == 2
+        generate_call = mock_client.post.call_args_list[0]
+        unload_call = mock_client.post.call_args_list[1]
+        payload = generate_call[1]["json"]
         assert payload["model"] == "LiquidAI/lfm2.5-1.2b-instruct"
         assert "Some transcript content" in payload["prompt"]
+        assert unload_call[1]["json"] == {
+            "model": "LiquidAI/lfm2.5-1.2b-instruct",
+            "keep_alive": 0,
+        }
 
 
 def test_summarize_video_prompt() -> None:
@@ -76,18 +81,17 @@ def test_summarize_video_prompt() -> None:
     with patch("httpx.Client", return_value=mock_client):
         result = summarize_transcript("Video transcript content", is_video=True)
         assert result == "## Resumo geral\n- Video summary point"
-        mock_client.post.assert_called_once()
-        payload = mock_client.post.call_args[1]["json"]
+        assert mock_client.post.call_count == 2
+        payload = mock_client.post.call_args_list[0][1]["json"]
         assert "transcript of a video" in payload["prompt"]
         assert "## Resumo geral" in payload["prompt"]
-
 
 
 def test_summarize_multi_chunk() -> None:
     # 6 words total, max_words_per_chunk=3 -> 2 chunks
     long_transcript = "one two three\nfour five six"
 
-    # Mock Ollama responses: 2 chunk summaries + 4 consolidation responses
+    # Mock Ollama responses: 2 chunk summaries + 4 consolidation responses + 1 unload response
     chunk_1_resp = MagicMock()
     chunk_1_resp.status_code = 200
     chunk_1_resp.json.return_value = {"response": "## Pontos principais\n- Point 1"}
@@ -100,15 +104,18 @@ def test_summarize_multi_chunk() -> None:
     cons_resp.status_code = 200
     cons_resp.json.return_value = {"response": "- Consolidated Point"}
 
+    unload_resp = MagicMock()
+    unload_resp.status_code = 200
+
     mock_client = MagicMock()
-    mock_client.post.side_effect = [chunk_1_resp, chunk_2_resp, cons_resp]
+    mock_client.post.side_effect = [chunk_1_resp, chunk_2_resp, cons_resp, unload_resp]
     mock_client.__enter__.return_value = mock_client
 
     with patch("httpx.Client", return_value=mock_client):
         result = summarize_transcript(long_transcript, max_words_per_chunk=3)
         assert "## Pontos principais" in result
         assert "- Consolidated Point" in result
-        assert mock_client.post.call_count == 3
+        assert mock_client.post.call_count == 4
 
 
 

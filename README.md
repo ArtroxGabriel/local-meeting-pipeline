@@ -93,41 +93,56 @@ uv run meeting-pipeline --target sample.mp3 --whisper-model tiny --language pt -
 
 ## 🐳 Docker & Docker Compose
 
-You can also run the entire pipeline, including a local instance of Ollama, using Docker Compose.
+You can run the entire pipeline, including an isolated instance of Ollama, using Docker Compose. The Docker setup is optimized for ultra-lightweight CPU execution (**~400 MB** image size) with optional GPU acceleration (**~2.2 GB** image size with CUDA library pruning).
+
+### 📦 Image Sizes & Strategy
+
+* **CPU Image (Default)**: `~400 MB` — Builds lightweight standard dependencies.
+* **GPU Image (CUDA Enabled)**: `~2.2 GB` — Built with `INSTALL_CUDA=true`. Static CUDA archives (`*.a` files) are stripped automatically during build to reduce image size by over 55%.
 
 ### ⚙️ Configuration (CPU vs GPU)
 
-Copy the `.env.example` template to `.env`:
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-By default, `.env` is configured to run on **CPU**. If you have an NVIDIA GPU and want to enable GPU acceleration (using the overlay file `docker-compose.gpu.yaml`), edit the `.env` file and configure it as follows:
-```env
-# Enable GPU acceleration (uncomment this line and comment out the CPU-only one)
-COMPOSE_FILE=docker-compose.yaml:docker-compose.gpu.yaml
+* **CPU Mode (Default)**: Keep `.env` set to `COMPOSE_FILE=docker-compose.yaml`.
+* **GPU Mode**: Edit `.env` to enable the GPU overlay:
+  ```env
+  COMPOSE_FILE=docker-compose.yaml:docker-compose.gpu.yaml
+  ```
+
+### 🚀 How to Run (Single-Job with Auto-Teardown)
+
+To run the pipeline and automatically spin down Ollama (cleaning up RAM/VRAM) when the meeting completes:
+
+```bash
+docker compose up --exit-code-from app --abort-on-container-exit
 ```
 
-Once `.env` is configured, you can run all Docker Compose commands normally without specifying `-f`.
+#### 🔄 Manual Service Management (Alternative)
+If you prefer running services persistently:
 
-### 🚀 How to Run
-
-1. **Start the services**:
+1. **Start Ollama**:
    ```bash
    docker compose up -d
    ```
-
-2. **Execute the pipeline**:
+2. **Execute Pipeline**:
    * **On CPU**:
      ```bash
      docker compose run --rm app --target sample.mp3 --whisper-model tiny --whisper-device cpu --language pt
      ```
-   * **On GPU** (ensure GPU is enabled in `.env` and nvidia runtime is active):
+   * **On GPU**:
      ```bash
      docker compose run --rm app --target sample.mp3 --whisper-model tiny --whisper-device cuda --language pt
      ```
+3. **Stop Ollama when finished**:
+   ```bash
+   docker compose down
+   ```
 
-The output files will be written directly to the host's `output/` directory. HuggingFace and Ollama caches are persisted in docker volumes so that subsequent runs do not re-download the models.
+> 💡 **Memory Optimization**: Upon completing summarization, the pipeline automatically sends a `keep_alive: 0` signal to Ollama, evicting the loaded LLM from memory (VRAM/RAM) immediately.
 
 ---
 

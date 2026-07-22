@@ -1,4 +1,8 @@
+ARG INSTALL_CUDA=false
+
 FROM python:3.14-slim AS builder
+
+ARG INSTALL_CUDA
 
 # Build-time system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -19,13 +23,24 @@ ENV UV_LINK_MODE=copy
 # Install dependencies first (better layer caching)
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev --extra cuda
+    if [ "$INSTALL_CUDA" = "true" ]; then \
+        uv sync --frozen --no-install-project --no-dev --extra cuda; \
+    else \
+        uv sync --frozen --no-install-project --no-dev; \
+    fi
 
 # Copy source and install the project itself
 COPY src/ ./src/
 COPY README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --extra cuda
+    if [ "$INSTALL_CUDA" = "true" ]; then \
+        uv sync --frozen --no-dev --extra cuda && \
+        find /app/.venv -name "*.a" -delete && \
+        find /app/.venv -name "*.h" -delete; \
+    else \
+        uv sync --frozen --no-dev; \
+    fi && \
+    find /app/.venv -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
 
 # ---------- Stage 2: runtime ----------
@@ -56,4 +71,3 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD ["meeting-pipeline", "--help"]
 
 ENTRYPOINT ["meeting-pipeline"]
-

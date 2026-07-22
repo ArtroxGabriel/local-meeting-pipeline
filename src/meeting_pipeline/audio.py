@@ -10,20 +10,20 @@ import uuid
 logger = logging.getLogger(__name__)
 
 
-def ensure_ffmpeg() -> None:
-    if shutil.which("ffmpeg"):
+def ensure_binary(binary_name: str) -> None:
+    if shutil.which(binary_name):
         return
 
-    logger.error("ffmpeg not found in PATH")
-    raise RuntimeError("ffmpeg not found in PATH")
+    logger.error("%s not found in PATH", binary_name)
+    raise RuntimeError(f"{binary_name} not found in PATH")
+
+
+def ensure_ffmpeg() -> None:
+    ensure_binary("ffmpeg")
 
 
 def ensure_yt_dlp() -> None:
-    if shutil.which("yt-dlp"):
-        return
-
-    logger.error("yt-dlp not found in PATH")
-    raise RuntimeError("yt-dlp not found in PATH")
+    ensure_binary("yt-dlp")
 
 
 def download_youtube_audio(url: str) -> Path:

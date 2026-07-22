@@ -1,7 +1,11 @@
 # GPU override configuration for Docker Compose
-# Run with: docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up -d
+# Run with: docker compose -f docker-compose.yaml -f docker-compose.gpu.yaml up --exit-code-from app --abort-on-container-exit
 services:
   app:
+    build:
+      context: .
+      args:
+        INSTALL_CUDA: "true"
     deploy:
       resources:
         reservations:

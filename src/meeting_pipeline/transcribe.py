@@ -9,20 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 def format_timestamp(seconds: float) -> str:
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    milliseconds = int(round((seconds - int(seconds)) * 1000))
-    if milliseconds >= 1000:
-        secs += int(milliseconds // 1000)
-        milliseconds = milliseconds % 1000
-        if secs >= 60:
-            minutes += int(secs // 60)
-            secs = secs % 60
-            if minutes >= 60:
-                hours += int(minutes // 60)
-                minutes = minutes % 60
-    return f"{hours:02d}:{minutes:02d}:{secs:02d},{milliseconds:03d}"
+    total_ms = int(round(seconds * 1000))
+    hours, remainder = divmod(total_ms, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    secs, ms = divmod(remainder, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
 
 
 def segments_to_srt(segments: list) -> tuple[str, str]:
