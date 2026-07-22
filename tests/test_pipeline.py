@@ -24,7 +24,7 @@ def test_run_pipeline(tmp_path: Path) -> None:
             whisper_model="tiny",
             whisper_device="cpu",
             whisper_compute_type="int8",
-            llm_model="gemma:2b",
+            llm_model="LiquidAI/lfm2.5-1.2b-instruct",
             language="pt",
         )
 
@@ -41,7 +41,7 @@ def test_run_pipeline(tmp_path: Path) -> None:
         )
         mock_summarize.assert_called_once_with(
             transcript="Mock transcription",
-            model_name="gemma:2b",
+            model_name="LiquidAI/lfm2.5-1.2b-instruct",
         )
 
         assert (output_dir / "transcript.txt").read_text(encoding="utf-8") == "Mock transcription\n"

@@ -21,7 +21,7 @@ services:
     image: ollama/ollama:latest
     environment:
       - OLLAMA_HOST=ollama:11434
-    command: ["pull", "gemma:2b"]
+    command: ["pull", "LiquidAI/lfm2.5-1.2b-instruct"]
     depends_on:
       - ollama
 

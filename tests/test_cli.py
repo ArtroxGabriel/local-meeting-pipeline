@@ -41,7 +41,7 @@ def test_cli_success(tmp_path: Path) -> None:
                 "--whisper-model",
                 "tiny",
                 "--llm-model",
-                "gemma:2b",
+                "LiquidAI/lfm2.5-1.2b-instruct",
                 "--language",
                 "pt",
                 "--verbose"
@@ -56,7 +56,7 @@ def test_cli_success(tmp_path: Path) -> None:
             whisper_model="tiny",
             whisper_device="cpu",
             whisper_compute_type="int8",
-            llm_model="gemma:2b",
+            llm_model="LiquidAI/lfm2.5-1.2b-instruct",
             language="pt",
         )
 

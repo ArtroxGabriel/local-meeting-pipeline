@@ -26,7 +26,7 @@ def main(
     whisper_model: str = typer.Option("small", "--whisper-model"),
     whisper_device: str = typer.Option("cpu", "--whisper-device"),
     whisper_compute_type: str = typer.Option("int8", "--whisper-compute-type"),
-    llm_model: str = typer.Option("gemma:2b", "--llm-model"),
+    llm_model: str = typer.Option("LiquidAI/lfm2.5-1.2b-instruct", "--llm-model"),
     language: str = typer.Option("pt", "--language"),
     verbose: bool = typer.Option(False, "--verbose"),
 ) -> None:

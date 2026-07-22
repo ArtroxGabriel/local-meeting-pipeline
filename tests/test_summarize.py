@@ -27,7 +27,7 @@ def test_summarize_success() -> None:
         call_args = mock_client.post.call_args
         # Verify the request payload has correct structure
         payload = call_args[1]["json"]
-        assert payload["model"] == "gemma:2b"
+        assert payload["model"] == "LiquidAI/lfm2.5-1.2b-instruct"
         assert "Some transcript content" in payload["prompt"]
 
 

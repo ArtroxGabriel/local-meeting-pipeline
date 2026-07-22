@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE = """
 Você receberá a transcrição de uma reunião.
-Retorne em português, de forma objetiva, usando apenas o conteúdo explícito da transcrição.
+Retorne em português um resumo, de forma objetiva, usando apenas o conteúdo explícito da transcrição.
 
 Formato obrigatório:
 ## Pontos principais
@@ -32,7 +32,7 @@ Transcrição:
 
 def summarize_transcript(
     transcript: str,
-    model_name: str = "gemma:2b",
+    model_name: str = "LiquidAI/lfm2.5-1.2b-instruct",
     base_url: str | None = None,
     timeout_seconds: float = 300.0,
 ) -> str:
