@@ -45,6 +45,8 @@ jobs:
         run: uv run pyrefly check
 
       - name: Unit Tests (Pytest)
+        env:
+          NO_COLOR: "1"
         run: uv run meeting-pipeline-test
 
   build-and-push:

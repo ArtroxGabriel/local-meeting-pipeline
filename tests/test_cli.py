@@ -7,13 +7,20 @@ from typer.testing import CliRunner
 from meeting_pipeline.cli import app
 
 
+import re
+
 runner = CliRunner()
 
 
+def _clean_output(text: str) -> str:
+    return re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", text)
+
+
 def test_cli_help() -> None:
-    result = runner.invoke(app, ["--help"])
+    result = runner.invoke(app, ["--help"], env={"NO_COLOR": "1", "TERM": "dumb"})
     assert result.exit_code == 0
-    assert "--target" in result.stdout
+    clean_out = _clean_output(result.output)
+    assert "--target" in clean_out
 
 
 def test_cli_missing_argument() -> None:
@@ -60,9 +67,10 @@ def test_cli_success_local_file(tmp_path: Path) -> None:
             ]
         )
         assert result.exit_code == 0
-        assert "Pipeline Status" in result.stdout
-        assert "Transcript (SRT) : out/transcript.srt" in result.stdout
-        assert "Summary          : out/meeting_points.md" in result.stdout
+        clean_out = _clean_output(result.output)
+        assert "Pipeline Status" in clean_out
+        assert "Transcript (SRT) : out/transcript.srt" in clean_out
+        assert "Summary          : out/meeting_points.md" in clean_out
         mock_run.assert_called_once_with(
             input_path=input_file,
             output_dir=output_dir,
