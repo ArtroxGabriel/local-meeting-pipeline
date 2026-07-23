@@ -44,7 +44,7 @@ def test_download_youtube_audio_success(tmp_path: Path) -> None:
          patch("pathlib.Path.exists", return_value=True):
         result_path = download_youtube_audio("https://www.youtube.com/watch?v=12345")
         assert result_path.parent == Path("/tmp")
-        assert result_path.name.startswith("meeting_yt_")
+        assert result_path.name.startswith("yt_")
         assert result_path.name.endswith(".wav")
         mock_sub.assert_called_once()
         cmd = mock_sub.call_args[0][0]

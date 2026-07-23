@@ -109,19 +109,21 @@ uv run meeting-pipeline --target <path_or_youtube_url> [OPTIONS]
 | `--whisper-compute-type` | `str` | *(preset)* | Quantization (`int8`, `float16`) |
 | `--llm-model` | `str` | *(preset)* | Ollama model name |
 | `--language` | `str` | `pt` | Language code for transcription |
-| `--video` | `flag` | `False` | Use video summary prompt template |
+| `--video` | `flag` | `False` | Enforce video summary prompt template (saves summary to `<stem>_resume.md`) |
+| `--meeting` | `flag` | `False` | Enforce meeting summary prompt template (saves summary to `<stem>_meeting_points.md`) |
 | `--verbose` | `flag` | `False` | Enable detailed step timing logs |
 
 ---
 
 ## 📁 Output Artifacts
 
-All outputs are written to `--output-dir` (default: `output/`):
+All outputs are suffixed with the input file/video name and saved to `--output-dir` (default: `output/`):
 
-* **`transcript.srt`**: Timestamps and subtitles in SubRip format.
-* **`meeting_points.md`**: Structured meeting bullet points in Portuguese.
-* **`transcript_metadata.json`**: Execution timings, models used, and audio metrics.
-* **`normalized.wav`**: 16kHz mono audio extracted from input.
+- **`<name>_transcript.srt`**: Timestamps and subtitles in SubRip format.
+- **`<name>_resume.md`**: Video summary (used when `--video` is set or processing video URLs).
+- **`<name>_meeting_points.md`**: Meeting points summary (used when `--meeting` is set or processing audio/meeting files).
+- **`<name>_metadata.json`**: Execution timings, models used, and audio metrics.
+- **`<name>_normalized.wav`**: 16kHz mono audio extracted from input.
 
 ---
 

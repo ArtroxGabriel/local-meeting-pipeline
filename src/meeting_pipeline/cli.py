@@ -93,14 +93,16 @@ def print_pipeline_status(
     timings = metadata.get("timings", {})
     models = metadata.get("models", {})
     word_counts = metadata.get("word_counts", {})
+    output_files = metadata.get("output_files", {})
+    metadata_file = output_files.get("metadata_path", str(output_dir / "transcript_metadata.json"))
 
     typer.echo("\n==================================================")
     typer.echo("                 Pipeline Status                  ")
     typer.echo("==================================================")
     typer.echo("📁 Output Paths:")
     typer.echo(f"  • Transcript (SRT) : {transcript_path}")
-    typer.echo(f"  • Meeting Points   : {summary_path}")
-    typer.echo(f"  • Metadata JSON    : {output_dir / 'transcript_metadata.json'}")
+    typer.echo(f"  • Summary          : {summary_path}")
+    typer.echo(f"  • Metadata JSON    : {metadata_file}")
 
     typer.echo("\n🤖 Models Used:")
     typer.echo(
@@ -159,11 +161,20 @@ def main(
     video: bool = typer.Option(
         False,
         "--video",
-        help="Use video summary prompt template instead of meeting template.",
+        help="Enforce video summary prompt template (saves summary to resume.md).",
+    ),
+    meeting: bool = typer.Option(
+        False,
+        "--meeting",
+        help="Enforce meeting summary prompt template (saves summary to meeting_points.md).",
     ),
     verbose: bool = typer.Option(False, "--verbose"),
 ) -> None:
     configure_logging(verbose)
+
+    if video and meeting:
+        typer.echo("Error: Cannot specify both --video and --meeting options simultaneously.", err=True)
+        raise typer.Exit(code=EXIT_ERROR)
 
     gpu_supported = is_gpu_available()
     allowed_presets = (
@@ -223,7 +234,12 @@ def main(
         or "youtube.com" in target
         or "youtu.be" in target
     )
-    is_video = is_url or video
+    if video:
+        is_video = True
+    elif meeting:
+        is_video = False
+    else:
+        is_video = is_url
 
     temp_file: Path | None = None
 

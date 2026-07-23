@@ -62,7 +62,7 @@ def test_cli_success_local_file(tmp_path: Path) -> None:
         assert result.exit_code == 0
         assert "Pipeline Status" in result.stdout
         assert "Transcript (SRT) : out/transcript.srt" in result.stdout
-        assert "Meeting Points   : out/meeting_points.md" in result.stdout
+        assert "Summary          : out/meeting_points.md" in result.stdout
         mock_run.assert_called_once_with(
             input_path=input_file,
             output_dir=output_dir,
@@ -176,5 +176,26 @@ def test_cli_gpu_disabled_in_cpu_mode(tmp_path: Path) -> None:
         result_device = runner.invoke(app, ["--target", str(input_file), "--whisper-device", "cuda"])
         assert result_device.exit_code == 1
         assert "--whisper-device cuda' was specified, but GPU execution is disabled or unavailable in CPU mode" in result_device.output
+
+
+def test_cli_meeting_flag(tmp_path: Path) -> None:
+    input_file = tmp_path / "sample.mp3"
+    input_file.write_text("mock audio content")
+    mock_res_meta = {"timings": {}, "models": {}, "word_counts": {}}
+
+    with patch("meeting_pipeline.cli.run_pipeline", return_value=(Path("out/sample_transcript.srt"), Path("out/sample_meeting_points.md"), mock_res_meta)) as mock_run:
+        result = runner.invoke(app, ["--target", str(input_file), "--meeting"])
+        assert result.exit_code == 0
+        mock_run.assert_called_once()
+        assert mock_run.call_args[1]["is_video"] is False
+
+
+def test_cli_video_and_meeting_mutually_exclusive(tmp_path: Path) -> None:
+    input_file = tmp_path / "sample.mp3"
+    input_file.write_text("mock audio content")
+
+    result = runner.invoke(app, ["--target", str(input_file), "--video", "--meeting"])
+    assert result.exit_code == 1
+    assert "Cannot specify both --video and --meeting options simultaneously" in result.output
 
 

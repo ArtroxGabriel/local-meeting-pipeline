@@ -27,10 +27,12 @@ def run_pipeline(
 ) -> tuple[Path, Path, dict]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    audio_path = output_dir / "normalized.wav"
-    transcript_path = output_dir / "transcript.srt"
-    summary_path = output_dir / "meeting_points.md"
-    metadata_path = output_dir / "transcript_metadata.json"
+    stem = input_path.stem
+    summary_filename = f"{stem}_resume.md" if is_video else f"{stem}_meeting_points.md"
+    audio_path = output_dir / f"{stem}_normalized.wav"
+    transcript_path = output_dir / f"{stem}_transcript.srt"
+    summary_path = output_dir / summary_filename
+    metadata_path = output_dir / f"{stem}_metadata.json"
 
     t_start = time.perf_counter()
 
@@ -87,6 +89,13 @@ def run_pipeline(
     metadata["word_counts"] = {
         "transcript_words": len(plain_text_transcript.split()),
         "summary_words": len(summary.split()),
+    }
+
+    metadata["output_files"] = {
+        "audio_path": str(audio_path),
+        "transcript_path": str(transcript_path),
+        "summary_path": str(summary_path),
+        "metadata_path": str(metadata_path),
     }
 
     transcript_path.write_text(srt_transcript + "\n", encoding="utf-8")

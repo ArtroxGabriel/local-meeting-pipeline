@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -31,10 +32,16 @@ def ensure_yt_dlp() -> None:
     ensure_binary("yt-dlp")
 
 
+def extract_youtube_id(url: str) -> str | None:
+    match = re.search(r"(?:v=|\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})", url)
+    return match.group(1) if match else None
+
+
 def download_youtube_audio(url: str) -> Path:
     ensure_yt_dlp()
     temp_dir = Path("/tmp")
-    output_filename = f"meeting_yt_{uuid.uuid4().hex}"
+    yt_id = extract_youtube_id(url)
+    output_filename = f"yt_{yt_id}" if yt_id else f"yt_{uuid.uuid4().hex[:8]}"
     output_path = temp_dir / f"{output_filename}.wav"
 
     command = [
