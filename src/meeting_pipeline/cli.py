@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 PRESETS: dict[str, dict[str, str | int]] = {
     "cpu": {
-        "whisper_model": "medium",
+        "whisper_model": "large-v3",
         "whisper_device": "cpu",
         "whisper_compute_type": "int8",
         "whisper_batch_size": 2,
@@ -30,14 +30,14 @@ PRESETS: dict[str, dict[str, str | int]] = {
         "llm_model": "LiquidAI/lfm2.5-1.2b-instruct",
     },
     "gpu": {
-        "whisper_model": "medium",
+        "whisper_model": "large-v3",
         "whisper_device": "cuda",
         "whisper_compute_type": "float16",
         "whisper_batch_size": 8,
         "llm_model": "llama3.1:8b",
     },
     "cuda": {
-        "whisper_model": "medium",
+        "whisper_model": "large-v3",
         "whisper_device": "cuda",
         "whisper_compute_type": "float16",
         "whisper_batch_size": 8,

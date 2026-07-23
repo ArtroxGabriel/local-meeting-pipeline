@@ -114,7 +114,7 @@ def test_cli_gpu_flag(tmp_path: Path) -> None:
         mock_run.assert_called_once_with(
             input_path=input_file,
             output_dir=Path("output"),
-            whisper_model="medium",
+            whisper_model="large-v3",
             whisper_device="cuda",
             whisper_compute_type="float16",
             llm_model="llama3.1:8b",
