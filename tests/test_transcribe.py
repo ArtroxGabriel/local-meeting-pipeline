@@ -92,7 +92,7 @@ def test_transcribe_success(tmp_path: Path) -> None:
             vad_filter=True,
             word_timestamps=False,
             batch_size=2,
-            log_progress=False,
+            log_progress=True,
         )
 
         assert plain_text == "Hello world.\nThis is a test."

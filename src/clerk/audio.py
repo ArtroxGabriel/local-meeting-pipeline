@@ -41,16 +41,18 @@ def download_youtube_audio(url: str) -> Path:
     ensure_yt_dlp()
     temp_dir = Path("/tmp")
     yt_id = extract_youtube_id(url)
-    output_filename = f"yt_{yt_id}" if yt_id else f"yt_{uuid.uuid4().hex[:8]}"
-    output_path = temp_dir / f"{output_filename}.wav"
+    default_filename = f"yt_{yt_id}" if yt_id else f"yt_{uuid.uuid4().hex[:8]}"
 
     command = [
         "yt-dlp",
         "-x",
         "--audio-format",
         "wav",
+        "--restrict-filenames",
+        "--print",
+        "after_move:filepath",
         "-o",
-        str(temp_dir / f"{output_filename}.%(ext)s"),
+        str(temp_dir / "yt_%(title)s.%(ext)s"),
         url,
     ]
 
@@ -66,11 +68,19 @@ def download_youtube_audio(url: str) -> Path:
         logger.error("yt-dlp failed: %s", result.stderr.strip())
         raise RuntimeError(f"Failed to download YouTube audio: {result.stderr.strip()}")
 
-    if not output_path.exists():
-        logger.error("Downloaded file not found at %s", output_path)
-        raise RuntimeError("Downloaded YouTube audio file not found")
+    if result.stdout.strip():
+        lines = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
+        if lines:
+            candidate = Path(lines[-1])
+            if candidate.exists():
+                return candidate
 
-    return output_path
+    fallback_path = temp_dir / f"{default_filename}.wav"
+    if fallback_path.exists():
+        return fallback_path
+
+    logger.error("Downloaded file not found")
+    raise RuntimeError("Downloaded YouTube audio file not found")
 
 
 

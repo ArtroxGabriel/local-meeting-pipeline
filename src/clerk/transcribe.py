@@ -49,6 +49,7 @@ def transcribe_file(
     language: str | None = "pt",
     batch_size: int = DEFAULT_BATCH_SIZE,
     verbose: bool = False,
+    log_progress: bool = True,
 ) -> tuple[str, str, dict]:
     if not audio_path.exists():
         logger.error("Audio file does not exist: %s", audio_path)
@@ -74,7 +75,7 @@ def transcribe_file(
         vad_filter=True,
         word_timestamps=False,
         batch_size=batch_size,
-        log_progress=verbose,
+        log_progress=log_progress,
     )
 
     # Convert generator to list to iterate for both SRT and plain text
