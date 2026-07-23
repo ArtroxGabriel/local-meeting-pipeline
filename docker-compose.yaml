@@ -1,5 +1,6 @@
 services:
   app:
+    image: ghcr.io/artroxgabriel/local-meeting-pipeline:cpu
     build:
       context: .
       args:
