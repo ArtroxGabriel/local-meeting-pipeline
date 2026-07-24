@@ -282,6 +282,18 @@ def main(
         )
         raise typer.Exit(code=EXIT_ERROR)
 
+    if effective_whisper_device.lower() in ("cpu", "auto") and effective_whisper_compute_type.lower() in (
+        "float16",
+        "int8_float16",
+        "bfloat16",
+        "int8_bfloat16",
+    ):
+        typer.echo(
+            f"Error: '--whisper-compute-type {effective_whisper_compute_type}' requires GPU (cuda). On CPU, available compute types are: default, float32, int8, int8_float32.",
+            err=True,
+        )
+        raise typer.Exit(code=EXIT_ERROR)
+
     is_url = (
         target.startswith(("http://", "https://", "www."))
         or "youtube.com" in target
@@ -341,11 +353,13 @@ def main(
                 if sys.stdin.isatty():
                     typer.echo(f"\n⚠️  Pipeline error: {e}", err=True)
                     typer.echo("Model or pipeline failure detected. Choose recovery option:", err=True)
-                    typer.echo("  [1] Enter a new LLM model name")
-                    typer.echo("  [2] Enter a new Whisper model name")
-                    typer.echo("  [3] Retry pipeline with current models")
-                    typer.echo("  [4] Exit")
-                    choice = typer.prompt("Select option [1-4]", default="4")
+                    typer.echo(f"  [1] Enter a new LLM model name (current: {effective_llm_model})")
+                    typer.echo(f"  [2] Enter a new Whisper model name (current: {effective_whisper_model})")
+                    typer.echo(f"  [3] Change Whisper compute type (current: {effective_whisper_compute_type})")
+                    typer.echo(f"  [4] Change Whisper device (current: {effective_whisper_device})")
+                    typer.echo("  [5] Retry pipeline with current configuration")
+                    typer.echo("  [6] Exit")
+                    choice = typer.prompt("Select option [1-6]", default="6")
                     if choice == "1":
                         new_llm = typer.prompt("Enter new LLM model name").strip()
                         if new_llm:
@@ -357,6 +371,16 @@ def main(
                             effective_whisper_model = new_whisper
                             continue
                     elif choice == "3":
+                        new_compute = typer.prompt("Enter new Whisper compute type (e.g. int8, float32, default)").strip()
+                        if new_compute:
+                            effective_whisper_compute_type = new_compute
+                            continue
+                    elif choice == "4":
+                        new_dev = typer.prompt("Enter new Whisper device (e.g. cpu, cuda)").strip()
+                        if new_dev:
+                            effective_whisper_device = new_dev
+                            continue
+                    elif choice == "5":
                         continue
                 logger.exception("Pipeline execution failed")
                 raise typer.Exit(code=EXIT_ERROR)

@@ -260,4 +260,13 @@ def test_cli_upfront_option_validation_before_download() -> None:
         mock_dl.assert_not_called()
 
 
+def test_cli_cpu_float16_not_supported(tmp_path: Path) -> None:
+    input_file = tmp_path / "sample.mp3"
+    input_file.write_text("mock audio content")
+
+    result = runner.invoke(app, ["--target", str(input_file), "-p", "cpu", "--whisper-compute-type", "float16"])
+    assert result.exit_code == 1
+    assert "requires GPU (cuda)" in result.output
+
+
 
