@@ -7,6 +7,12 @@ import re
 
 import httpx
 
+from .prompts import (
+    PromptManager,
+    clean_srt_for_prompt,
+    get_language_name,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,129 +23,92 @@ UNLOAD_TIMEOUT_SECONDS = 10.0
 PULL_TIMEOUT_SECONDS = 600.0
 DEFAULT_MAX_WORDS_PER_CHUNK = 2000
 
-PROMPT_TEMPLATE = """
-You will receive the transcript of a meeting.
-Provide an objective summary in {language}, using only the explicit content from the transcript.
 
-Mandatory format:
-## Pontos principais
-- [Key discussion point 1]
+def split_transcript_smart(
+    transcript: str,
+    max_words: int = DEFAULT_MAX_WORDS_PER_CHUNK,
+) -> list[str]:
+    """Splits transcript into chunks without breaking mid-sentence, word, or phrase."""
+    cleaned = clean_srt_for_prompt(transcript)
+    if not cleaned:
+        return []
 
-## Decisões
-- [Decision made or 'Nenhuma registrada.']
+    lines = cleaned.splitlines()
+    units: list[str] = []
 
-## Ações
-- [Action item or 'Nenhuma registrada.']
+    for line in lines:
+        line_str = line.strip()
+        if not line_str:
+            continue
+        sub_sentences = re.split(r"(?<=[.!?])\s+", line_str)
+        for s in sub_sentences:
+            if s.strip():
+                units.append(s.strip())
 
-## Pendências
-- [Pending issue or 'Nenhuma registrada.']
+    chunks: list[str] = []
+    current_chunk: list[str] = []
+    current_word_count = 0
 
-Do not invent missing facts.
-Transcript:
-{transcript}
-""".strip()
+    for unit in units:
+        words = unit.split()
+        unit_word_count = len(words)
+        if not words:
+            continue
 
-VIDEO_SUMMARY_PROMPT_TEMPLATE = """
-You will receive the transcript of a video.
-Provide an objective and structured summary in {language}, using only the explicit content from the transcript.
+        if unit_word_count > max_words:
+            if current_chunk:
+                chunks.append(" ".join(current_chunk))
+                current_chunk = []
+                current_word_count = 0
 
-Focus on the main ideas, key explanations, and important moments presented in the video.
+            clauses = re.split(r"(?<=[,;:])\s+", unit)
+            if len(clauses) == 1:
+                for i in range(0, len(words), max_words):
+                    chunks.append(" ".join(words[i : i + max_words]))
+            else:
+                sub_chunk: list[str] = []
+                sub_count = 0
+                for clause in clauses:
+                    c_words = clause.split()
+                    if not c_words:
+                        continue
+                    if sub_count + len(c_words) > max_words and sub_chunk:
+                        chunks.append(" ".join(sub_chunk))
+                        sub_chunk = [clause]
+                        sub_count = len(c_words)
+                    else:
+                        sub_chunk.append(clause)
+                        sub_count += len(c_words)
+                if sub_chunk:
+                    chunks.append(" ".join(sub_chunk))
+            continue
 
-Mandatory format:
-## Resumo geral
-- [A concise overview of what the video is about]
+        if current_word_count + unit_word_count > max_words:
+            if current_chunk:
+                chunks.append(" ".join(current_chunk))
+            current_chunk = [unit]
+            current_word_count = unit_word_count
+        else:
+            current_chunk.append(unit)
+            current_word_count += unit_word_count
 
-## Principais tópicos
-- [Key topic 1]
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
 
-## Momentos importantes
-- [Key explanation or important moment 1]
-
-## Conclusões ou mensagens finais
-- [Final takeaway or conclusion]
-
-Do not invent missing facts.
-Transcript:
-{transcript}
-""".strip()
-
-CONSOLIDATE_PROMPT_TEMPLATE = """
-You will receive a list of items for the category '{category}' extracted from different parts of a meeting transcript.
-Your task is to consolidate these items into a single, concise list in {language} without duplicates or redundancies.
-
-Keep only the explicit facts provided in the items list. Do not add new facts or assumptions.
-If the list is empty, respond only with: - Nenhuma registrada.
-
-Mandatory format (return ONLY the list of topics):
-- Consolidated item 1
-- Consolidated item 2
-
-Items to consolidate:
-{items}
-""".strip()
-
-LANGUAGE_NAMES: dict[str, str] = {
-    "pt": "Portuguese",
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "de": "German",
-    "it": "Italian",
-}
-
-
-def get_language_name(lang_code: str | None) -> str:
-    if not lang_code:
-        return "Portuguese"
-    return LANGUAGE_NAMES.get(lang_code.lower(), lang_code)
+    return chunks
 
 
 def split_transcript_by_words(
     transcript: str,
     max_words: int = DEFAULT_MAX_WORDS_PER_CHUNK,
 ) -> list[str]:
-    lines = transcript.splitlines()
-    chunks: list[str] = []
-    current_chunk: list[str] = []
-    current_word_count = 0
-
-    for line in lines:
-        words = line.split()
-        if not words:
-            continue
-
-        line_word_count = len(words)
-
-        if line_word_count > max_words:
-            if current_chunk:
-                chunks.append("\n".join(current_chunk))
-                current_chunk = []
-                current_word_count = 0
-
-            for i in range(0, line_word_count, max_words):
-                chunk_words = words[i : i + max_words]
-                chunks.append(" ".join(chunk_words))
-            continue
-
-        if current_word_count + line_word_count > max_words:
-            if current_chunk:
-                chunks.append("\n".join(current_chunk))
-            current_chunk = [line]
-            current_word_count = line_word_count
-        else:
-            current_chunk.append(line)
-            current_word_count += line_word_count
-
-    if current_chunk:
-        chunks.append("\n".join(current_chunk))
-
-    return chunks
+    """Boundary-aware sentence/clause chunking strategy wrapper."""
+    return split_transcript_smart(transcript, max_words=max_words)
 
 
 @dataclass(frozen=True)
 class SummaryConfig:
     sections: list[str]
-    prompt_template: str
     primary_section: str
 
 
@@ -152,12 +121,10 @@ def get_summary_config(is_video: bool) -> SummaryConfig:
                 "Momentos importantes",
                 "Conclusões ou mensagens finais",
             ],
-            prompt_template=VIDEO_SUMMARY_PROMPT_TEMPLATE,
             primary_section="Resumo geral",
         )
     return SummaryConfig(
         sections=["Pontos principais", "Decisões", "Ações", "Pendências"],
-        prompt_template=PROMPT_TEMPLATE,
         primary_section="Pontos principais",
     )
 
@@ -268,21 +235,37 @@ def summarize_transcript(
     max_words_per_chunk: int = DEFAULT_MAX_WORDS_PER_CHUNK,
     language: str = "pt",
     is_video: bool = False,
+    is_gpu_model: bool = False,
 ) -> str:
     if base_url is None:
         base_url = os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
-    if not transcript.strip():
-        logger.error("Transcript is empty")
+
+    cleaned_transcript = clean_srt_for_prompt(transcript)
+    if not transcript or not transcript.strip() or not cleaned_transcript:
+        logger.error("Transcript is empty or contains no speech content")
         raise ValueError("transcript is empty")
 
     lang_name = get_language_name(language)
     config = get_summary_config(is_video)
 
-    words = transcript.split()
+    # Detect GPU model if not explicitly specified
+    if not is_gpu_model:
+        lower_m = model_name.lower()
+        if "llama3" in lower_m or "gpu" in lower_m or "cuda" in lower_m or "8b" in lower_m:
+            is_gpu_model = True
+
+    prompt_strategy = PromptManager.get_strategy(is_gpu_model)
+
+    words = cleaned_transcript.split()
     try:
         if len(words) <= max_words_per_chunk:
+            prompt = prompt_strategy.build_summary_prompt(
+                transcript=cleaned_transcript,
+                language=lang_name,
+                is_video=is_video,
+            )
             content = _call_ollama_generate(
-                prompt=config.prompt_template.format(transcript=transcript, language=lang_name),
+                prompt=prompt,
                 model_name=model_name,
                 base_url=base_url,
                 timeout_seconds=timeout_seconds,
@@ -297,14 +280,19 @@ def summarize_transcript(
             len(words),
             max_words_per_chunk,
         )
-        chunks = split_transcript_by_words(transcript, max_words_per_chunk)
+        chunks = split_transcript_smart(cleaned_transcript, max_words_per_chunk)
 
         combined_sections: dict[str, list[str]] = {sec: [] for sec in config.sections}
 
         for i, chunk in enumerate(chunks):
             logger.info("Summarizing chunk %d/%d...", i + 1, len(chunks))
+            chunk_prompt = prompt_strategy.build_summary_prompt(
+                transcript=chunk,
+                language=lang_name,
+                is_video=is_video,
+            )
             chunk_summary = _call_ollama_generate(
-                prompt=config.prompt_template.format(transcript=chunk, language=lang_name),
+                prompt=chunk_prompt,
                 model_name=model_name,
                 base_url=base_url,
                 timeout_seconds=timeout_seconds,
@@ -323,8 +311,10 @@ def summarize_transcript(
                 continue
 
             items_text = "\n".join(f"- {item}" for item in items)
-            prompt = CONSOLIDATE_PROMPT_TEMPLATE.format(
-                category=sec, items=items_text, language=lang_name
+            prompt = prompt_strategy.build_consolidation_prompt(
+                category=sec,
+                items=items_text,
+                language=lang_name,
             )
 
             consolidated_content = _call_ollama_generate(
@@ -343,5 +333,3 @@ def summarize_transcript(
         return "\n\n".join(final_parts).strip()
     finally:
         unload_ollama_model(model_name=model_name, base_url=base_url)
-
-

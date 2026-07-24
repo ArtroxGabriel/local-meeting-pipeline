@@ -317,18 +317,48 @@ def main(
         else:
             input_path = Path(target)
 
-        transcript_path, summary_path, metadata = run_pipeline(
-            input_path=input_path,
-            output_dir=output_dir,
-            whisper_model=effective_whisper_model,
-            whisper_device=effective_whisper_device,
-            whisper_compute_type=effective_whisper_compute_type,
-            llm_model=effective_llm_model,
-            language=language,
-            whisper_batch_size=effective_whisper_batch_size,
-            is_video=is_video,
-            verbose=verbose,
-        )
+        while True:
+            try:
+                transcript_path, summary_path, metadata = run_pipeline(
+                    input_path=input_path,
+                    output_dir=output_dir,
+                    whisper_model=effective_whisper_model,
+                    whisper_device=effective_whisper_device,
+                    whisper_compute_type=effective_whisper_compute_type,
+                    llm_model=effective_llm_model,
+                    language=language,
+                    whisper_batch_size=effective_whisper_batch_size,
+                    is_video=is_video,
+                    verbose=verbose,
+                )
+                break
+            except (KeyboardInterrupt, typer.Exit):
+                raise
+            except Exception as e:
+                import sys
+
+                if sys.stdin.isatty():
+                    typer.echo(f"\n⚠️  Pipeline error: {e}", err=True)
+                    typer.echo("Model or pipeline failure detected. Choose recovery option:", err=True)
+                    typer.echo("  [1] Enter a new LLM model name")
+                    typer.echo("  [2] Enter a new Whisper model name")
+                    typer.echo("  [3] Retry pipeline with current models")
+                    typer.echo("  [4] Exit")
+                    choice = typer.prompt("Select option [1-4]", default="4")
+                    if choice == "1":
+                        new_llm = typer.prompt("Enter new LLM model name").strip()
+                        if new_llm:
+                            effective_llm_model = new_llm
+                            continue
+                    elif choice == "2":
+                        new_whisper = typer.prompt("Enter new Whisper model name").strip()
+                        if new_whisper:
+                            effective_whisper_model = new_whisper
+                            continue
+                    elif choice == "3":
+                        continue
+                logger.exception("Pipeline execution failed")
+                raise typer.Exit(code=EXIT_ERROR)
 
         print_pipeline_status(
             transcript_path=transcript_path,
