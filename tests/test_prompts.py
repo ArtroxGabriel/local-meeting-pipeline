@@ -6,6 +6,7 @@ from clerk.prompts import (
     PromptManager,
     clean_srt_for_prompt,
     get_language_name,
+    is_meaningful_transcript,
 )
 
 
@@ -32,6 +33,15 @@ This is a secondary line.
     assert "This is a secondary line." in cleaned
 
 
+def test_is_meaningful_transcript() -> None:
+    assert is_meaningful_transcript("Reunião produtiva com decisões importantes sobre o projeto.") is True
+    assert is_meaningful_transcript("") is False
+    assert is_meaningful_transcript("   ") is False
+    assert is_meaningful_transcript("[Music]") is False
+    assert is_meaningful_transcript("noise noise noise noise") is False
+    assert is_meaningful_transcript("3 words noise") is False
+
+
 def test_prompt_manager_and_strategies() -> None:
     cpu_strat = PromptManager.get_strategy(is_gpu_model=False)
     gpu_strat = PromptManager.get_strategy(is_gpu_model=True)
@@ -41,7 +51,11 @@ def test_prompt_manager_and_strategies() -> None:
 
     meeting_prompt_cpu = cpu_strat.build_summary_prompt("test transcript", "Portuguese", is_video=False)
     assert "## Pontos principais" in meeting_prompt_cpu
+    assert "<<<TRANSCRIPT>>>" in meeting_prompt_cpu
+    assert "<<<END TRANSCRIPT>>>" in meeting_prompt_cpu
 
     video_prompt_gpu = gpu_strat.build_summary_prompt("test transcript", "English", is_video=True)
     assert "## Resumo geral" in video_prompt_gpu
     assert "content strategist" in video_prompt_gpu
+    assert "<<<TRANSCRIPT>>>" in video_prompt_gpu
+    assert "<<<END TRANSCRIPT>>>" in video_prompt_gpu

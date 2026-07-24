@@ -11,6 +11,7 @@ from .prompts import (
     PromptManager,
     clean_srt_for_prompt,
     get_language_name,
+    is_meaningful_transcript,
 )
 
 logger = logging.getLogger(__name__)
@@ -241,8 +242,8 @@ def summarize_transcript(
         base_url = os.environ.get("OLLAMA_BASE_URL", DEFAULT_OLLAMA_BASE_URL)
 
     cleaned_transcript = clean_srt_for_prompt(transcript)
-    if not transcript or not transcript.strip() or not cleaned_transcript:
-        logger.error("Transcript is empty or contains no speech content")
+    if not transcript or not transcript.strip() or not is_meaningful_transcript(transcript):
+        logger.error("Transcript is empty, garbled, or contains insufficient speech content")
         raise ValueError("transcript is empty")
 
     lang_name = get_language_name(language)
