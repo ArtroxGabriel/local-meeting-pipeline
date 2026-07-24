@@ -18,6 +18,12 @@ def test_clean_llm_output() -> None:
 <<<END ITEMS>>>"""
     assert clean_llm_output(raw) == "- Item 1\n- Item 2"
 
+    raw_consolidado = """<<<consolidado>>>
+- Item A
+- Item B
+<<<END CONSOLIDADO>>>"""
+    assert clean_llm_output(raw_consolidado) == "- Item A\n- Item B"
+
 
 def test_get_language_name() -> None:
     assert get_language_name("pt") == "Portuguese"

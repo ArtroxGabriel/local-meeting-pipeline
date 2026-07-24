@@ -49,16 +49,11 @@ def clean_srt_for_prompt(transcript: str) -> str:
 
 
 def clean_llm_output(text: str) -> str:
-    """Strips prompt delimiters (<<<ITEMS>>>, <<<TRANSCRIPT>>>, etc.) if echoed by the LLM."""
+    """Strips any <<<text>>> delimiter tags echoed by the LLM."""
     if not text:
         return ""
-    # Strip delimiter tags if the model echoed them
-    cleaned = re.sub(
-        r"<\s*<\s*<\s*(?:TRANSCRIPT|END\s*TRANSCRIPT|ITEMS|END\s*ITEMS)\s*>\s*>\s*>",
-        "",
-        text,
-        flags=re.IGNORECASE,
-    )
+    # Strip any <<<anything>>> tag pattern
+    cleaned = re.sub(r"<\s*<\s*<[^>]+>\s*>\s*>", "", text)
     lines = [line for line in cleaned.splitlines() if line.strip()]
     return "\n".join(lines).strip()
 
