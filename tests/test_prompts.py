@@ -4,10 +4,19 @@ from clerk.prompts import (
     CpuPromptStrategy,
     GpuPromptStrategy,
     PromptManager,
+    clean_llm_output,
     clean_srt_for_prompt,
     get_language_name,
     is_meaningful_transcript,
 )
+
+
+def test_clean_llm_output() -> None:
+    raw = """<<<ITEMS>>>
+- Item 1
+- Item 2
+<<<END ITEMS>>>"""
+    assert clean_llm_output(raw) == "- Item 1\n- Item 2"
 
 
 def test_get_language_name() -> None:

@@ -9,6 +9,7 @@ import httpx
 
 from .prompts import (
     PromptManager,
+    clean_llm_output,
     clean_srt_for_prompt,
     get_language_name,
     is_meaningful_transcript,
@@ -225,7 +226,7 @@ def _call_ollama_generate(
 
     data = response.json()
     content = data.get("response", "").strip()
-    return content
+    return clean_llm_output(content)
 
 
 def summarize_transcript(
