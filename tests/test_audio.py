@@ -9,7 +9,16 @@ from clerk.audio import (
     ensure_ffmpeg,
     ensure_yt_dlp,
     extract_audio,
+    extract_youtube_id,
 )
+
+
+def test_extract_youtube_id() -> None:
+    assert extract_youtube_id("https://www.youtube.com/watch?v=bWZndc9ycII") == "bWZndc9ycII"
+    assert extract_youtube_id("https://youtu.be/bWZndc9ycII") == "bWZndc9ycII"
+    assert extract_youtube_id("https://www.youtube.com/embed/bWZndc9ycII") == "bWZndc9ycII"
+    assert extract_youtube_id("https://www.youtube.com/shorts/bWZndc9ycII") == "bWZndc9ycII"
+    assert extract_youtube_id("invalid_url_without_id") is None
 
 
 def test_ensure_ffmpeg_success() -> None:

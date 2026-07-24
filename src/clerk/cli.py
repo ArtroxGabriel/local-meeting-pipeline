@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import logging
+import os
 from pathlib import Path
 import time
 
@@ -8,8 +7,6 @@ import typer
 
 from .audio import download_youtube_audio
 from .pipeline import run_pipeline
-
-import os
 
 app = typer.Typer(add_completion=False)
 logger = logging.getLogger(__name__)
@@ -60,6 +57,10 @@ GPU_PRESETS = {"gpu", "cuda", "accurate"}
 VALID_COMPUTE_TYPES = {"int8", "int8_float16", "int8_bfloat16", "int8_float32", "float16", "bfloat16", "float32", "default"}
 VALID_DEVICES = {"cpu", "cuda", "gpu", "auto"}
 
+CS_PER_HOUR = 360_000
+CS_PER_MINUTE = 6_000
+CS_PER_SECOND = 100
+
 
 def is_gpu_available() -> bool:
     env_gpu = os.environ.get("ENABLE_GPU", "").strip().lower()
@@ -86,10 +87,10 @@ def configure_logging(verbose: bool) -> None:
 
 
 def format_time_hhmmssmm(seconds: float) -> str:
-    total_cs = round(seconds * 100)
-    hours, remainder = divmod(total_cs, 360000)
-    minutes, remainder = divmod(remainder, 6000)
-    secs, cs = divmod(remainder, 100)
+    total_cs = round(seconds * CS_PER_SECOND)
+    hours, remainder = divmod(total_cs, CS_PER_HOUR)
+    minutes, remainder = divmod(remainder, CS_PER_MINUTE)
+    secs, cs = divmod(remainder, CS_PER_SECOND)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}:{cs:02d}"
 
 
